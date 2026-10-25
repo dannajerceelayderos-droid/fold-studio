@@ -1,36 +1,34 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Fold Studio
 
-## Getting Started
+Design flat. See it folded. A browser-based packaging design studio: design artwork on a flat dieline and see it folded onto live 3D geometry.
 
-First, run the development server:
+## Run it
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev        # http://localhost:3000
+npm test           # geometry, schema and editor-history tests
+npm run build      # production build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+No environment variables are needed. Projects and uploaded images are stored locally in the browser (IndexedDB). See `.env.example` for the variables a future Supabase cloud mode would use.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## How it fits together
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `src/lib/templates/` — each template builds a typed **dieline** (panels, outlines, hinges) from width × height × depth.
+- `src/lib/fold.ts` — hinge math that folds the dieline into 3D. The 3D model, tests and exports all use it, so 2D and 3D can't drift apart.
+- `src/lib/render/canvas.ts` and `svg.ts` — draw the same artwork objects to 3D textures and to SVG exports; `components/editor/ObjectSvg.tsx` draws them in the editor.
+- `src/store/editor.ts` — editor state with bounded undo/redo (drags and typing are recorded as single steps).
+- `src/lib/storage/db.ts` — a `ProjectRepository` interface with the local IndexedDB implementation.
 
-## Learn More
+## What works
 
-To learn more about Next.js, take a look at the following resources:
+Landing page with a live folding hero and an interactive 2D→3D demo, dashboard (create, open, search, sort, rename, duplicate, delete, import/export), template gallery, and the editor: SVG dieline canvas with cut/fold lines, safe-area guides, grid and dimensions; text, image/logo, rectangle, circle, line and vector shapes; move, resize, rotate, lock, hide, rename, reorder, multi-select, snapping and panel hand-over; panel backgrounds; live 3D preview with fold and lid sliders, view presets, six materials, lighting, backgrounds and shadows; brand kit; autosave; keyboard shortcuts; PNG (up to 3×, transparent), 1:1 SVG dieline and project-file exports.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Not yet built
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Accounts, Supabase cloud sync and the Studio/Team plans (sign-in page explains guest mode).
+- Sleeves, labels, inserts and packaging-set templates.
+- Production prepress: bleed, CMYK/colour profiles, font outlining or embedding, image-resolution checks, board-thickness and crease tolerances. Exported SVGs are visual dielines, not printer-approved files.
+- Custom font upload, image cropping beyond fit/fill, and a bleed overlay in the editor.
+- Mailer side walls carry artwork in dieline orientation (rotate text 90° on them).
