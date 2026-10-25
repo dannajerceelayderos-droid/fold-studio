@@ -20,6 +20,8 @@ import { LeftSidebar } from "./LeftSidebar";
 import { PropertiesPanel } from "./PropertiesPanel";
 import { editorScene } from "./sceneRef";
 import { TopBar } from "./TopBar";
+import { MobileToolbar } from "./MobileToolbar";
+import { useIsMobile } from "./useIsMobile";
 import { Viewport3D } from "./Viewport3D";
 
 const PackageScene = dynamic(() => import("../package3d/PackageScene").then((m) => m.PackageScene), { ssr: false });
@@ -52,11 +54,17 @@ export function Editor({ projectId }: { projectId: string }) {
   const project = useEditor((s) => s.project);
   const view = useEditor((s) => s.view);
   const revision = useEditor((s) => s.revision);
+  const mobile = useIsMobile();
   const [state, setState] = useState<"loading" | "ready" | "missing" | "error">("loading");
   const [exportOpen, setExportOpen] = useState(false);
   const [presenting, setPresenting] = useState(false);
   const saving = useRef(false);
   const lastThumb = useRef(0);
+
+  // phones show one view at a time
+  useEffect(() => {
+    if (mobile && useEditor.getState().view === "split") useEditor.getState().setView("2d");
+  }, [mobile, view]);
 
   // load
   useEffect(() => {
@@ -273,29 +281,31 @@ export function Editor({ projectId }: { projectId: string }) {
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-workspace">
-      <TopBar onExport={() => setExportOpen(true)} onPreview={() => setPresenting(true)} onSave={() => save(true)} menu={menu} />
-      <div className="border-b border-line bg-[#FBF7EC] px-4 py-2 text-[12.5px] text-ink-2 md:hidden">
-        The editor is built for larger screens. You can view the package here; open Fold Studio on a computer to edit.
-      </div>
-      <div className="flex min-h-0 flex-1">
-        <div className="hidden md:flex">
+      <TopBar mobile={mobile} onExport={() => setExportOpen(true)} onPreview={() => setPresenting(true)} onSave={() => save(true)} menu={menu} />
+      {mobile ? (
+        <>
+          <main className="relative min-h-0 flex-1">{view === "3d" ? <Viewport3D /> : <Canvas2D />}</main>
+          <MobileToolbar />
+        </>
+      ) : (
+        <div className="flex min-h-0 flex-1">
           <LeftSidebar />
-        </div>
-        <main className="relative flex min-w-0 flex-1 flex-col md:flex-row">
-          {view !== "3d" && (
-            <div className={`relative hidden min-h-0 min-w-0 md:block ${view === "split" ? "md:flex-1" : "flex-1"}`}>
-              <Canvas2D />
-            </div>
-          )}
-          {view === "split" && <div className="hidden w-px bg-line md:block" />}
-          <div className={`relative min-h-0 min-w-0 flex-1 ${view === "2d" ? "md:hidden" : ""}`}>
-            <Viewport3D />
-          </div>
-        </main>
-        <div className="hidden md:flex">
+          <main className="relative flex min-w-0 flex-1">
+            {view !== "3d" && (
+              <div className="relative min-h-0 min-w-0 flex-1">
+                <Canvas2D />
+              </div>
+            )}
+            {view === "split" && <div className="w-px bg-line" />}
+            {view !== "2d" && (
+              <div className="relative min-h-0 min-w-0 flex-1">
+                <Viewport3D />
+              </div>
+            )}
+          </main>
           <PropertiesPanel />
         </div>
-      </div>
+      )}
       <ExportDialog open={exportOpen} onClose={() => setExportOpen(false)} />
       <ConfirmHost />
       {presenting && (

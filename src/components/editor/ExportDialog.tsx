@@ -29,7 +29,7 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
 
   const exportPng = async () => {
     if (!editorScene.current) {
-      if (view === "2d") setView("split");
+      setView(view === "2d" ? (window.innerWidth < 768 ? "3d" : "split") : view);
       toast.info("Opening the 3D preview — try the export again in a moment.");
       return;
     }

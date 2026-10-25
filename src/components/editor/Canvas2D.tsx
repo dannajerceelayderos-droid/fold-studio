@@ -13,7 +13,8 @@ type Drag =
   | { kind: "move"; start: [number, number]; origin: Record<string, [number, number]>; moved: boolean }
   | { kind: "resize"; id: string; sx: number; sy: number; start: ArtObject; anchor: [number, number] }
   | { kind: "rotate"; id: string; center: [number, number] }
-  | { kind: "pan"; start: [number, number]; pan: [number, number] };
+  | { kind: "pan"; start: [number, number]; pan: [number, number] }
+  | { kind: "pinch"; dist: number; mid: [number, number]; zoom: number; pan: [number, number] };
 
 const rad = (d: number) => (d * Math.PI) / 180;
 const rot = (x: number, y: number, deg: number): [number, number] => {
@@ -45,6 +46,10 @@ export function Canvas2D() {
   const [snap, setSnap] = useState<{ x?: number; y?: number } | null>(null);
   const [assetsTick, setAssetsTick] = useState(assetVersion());
   const spaceDown = useRef(false);
+  const pointers = useRef(new Map<number, [number, number]>());
+  const lastTap = useRef<{ id: string; t: number } | null>(null);
+  const [coarse, setCoarse] = useState(false);
+  useEffect(() => setCoarse(window.matchMedia("(pointer: coarse)").matches), []);
   useEffect(() => onAssetsChanged(() => setAssetsTick(assetVersion())), []);
 
   useEffect(() => {
@@ -137,8 +142,17 @@ export function Canvas2D() {
   };
 
   const onObjectDown = (e: React.PointerEvent, o: ArtObject) => {
-    if (e.button === 1 || spaceDown.current) return;
+    if (e.button === 1 || spaceDown.current || pointers.current.size > 1) return;
     e.stopPropagation();
+    if (e.pointerType !== "mouse") {
+      const now = Date.now();
+      if (lastTap.current?.id === o.id && now - lastTap.current.t < 350) {
+        lastTap.current = null;
+        onDouble(o);
+        return;
+      }
+      lastTap.current = { id: o.id, t: now };
+    }
     const s = ed();
     let sel = s.selection;
     if (e.shiftKey) {
@@ -180,8 +194,51 @@ export function Canvas2D() {
     (e.currentTarget as SVGElement).ownerSVGElement?.setPointerCapture(e.pointerId);
   };
 
+  const pinchInfo = () => {
+    const pts = [...pointers.current.values()];
+    const rect = wrap.current!.getBoundingClientRect();
+    const dist = Math.hypot(pts[0][0] - pts[1][0], pts[0][1] - pts[1][1]);
+    const mid: [number, number] = [(pts[0][0] + pts[1][0]) / 2 - rect.left, (pts[0][1] + pts[1][1]) / 2 - rect.top];
+    return { dist, mid };
+  };
+
+  const onDownCapture = (e: React.PointerEvent) => {
+    pointers.current.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pointers.current.size === 2) {
+      // second finger: abandon any object drag and start a pinch
+      const s = ed();
+      if (s.transientBase) {
+        useEditor.setState({ project: s.transientBase, transientBase: null });
+      }
+      const { dist, mid } = pinchInfo();
+      setDrag({ kind: "pinch", dist: Math.max(1, dist), mid, zoom: s.zoom, pan });
+      setSnap(null);
+      e.stopPropagation();
+      e.preventDefault();
+    }
+  };
+
+  const onMoveCapture = (e: React.PointerEvent) => {
+    if (pointers.current.has(e.pointerId)) pointers.current.set(e.pointerId, [e.clientX, e.clientY]);
+  };
+
+  const onUpCapture = (e: React.PointerEvent) => {
+    pointers.current.delete(e.pointerId);
+  };
+
   const onMove = (e: React.PointerEvent) => {
     if (!drag) return;
+    if (drag.kind === "pinch") {
+      if (pointers.current.size < 2) return;
+      const { dist, mid } = pinchInfo();
+      const nz = Math.min(8, Math.max(0.2, drag.zoom * (dist / drag.dist)));
+      const k = nz / drag.zoom;
+      const cx = size.w / 2 + drag.pan[0];
+      const cy = size.h / 2 + drag.pan[1];
+      setPan([drag.pan[0] + (drag.mid[0] - cx) * (1 - k) + (mid[0] - drag.mid[0]), drag.pan[1] + (drag.mid[1] - cy) * (1 - k) + (mid[1] - drag.mid[1])]);
+      ed().setZoom(nz);
+      return;
+    }
     if (drag.kind === "pan") {
       setPan([drag.pan[0] + e.clientX - drag.start[0], drag.pan[1] + e.clientY - drag.start[1]]);
       return;
@@ -268,6 +325,10 @@ export function Canvas2D() {
 
   const onUp = () => {
     if (!drag) return;
+    if (drag.kind === "pinch") {
+      if (pointers.current.size === 0) setDrag(null);
+      return;
+    }
     const s = ed();
     if (drag.kind === "move" && drag.moved) {
       // hand an object over to the panel it was dropped on
@@ -315,6 +376,10 @@ export function Canvas2D() {
         width={size.w}
         height={size.h}
         className="block"
+        onPointerDownCapture={onDownCapture}
+        onPointerMoveCapture={onMoveCapture}
+        onPointerUpCapture={onUpCapture}
+        onPointerCancelCapture={onUpCapture}
         onPointerDown={onBackgroundDown}
         onPointerMove={onMove}
         onPointerUp={onUp}
@@ -405,17 +470,18 @@ export function Canvas2D() {
             const t = `translate(${p.x + o.x + o.width / 2} ${p.y + o.y + o.height / 2}) rotate(${o.rotation})`;
             const hw = o.width / 2;
             const hh = o.height / 2;
-            const hs = 8 * px;
+            const hs = (coarse ? 18 : 8) * px;
+            const rOff = (coarse ? 34 : 22) * px;
             return (
               <g key={`sel-${o.id}`} transform={t}>
                 <rect x={-hw} y={-hh} width={o.width} height={o.height} fill="none" stroke={o.locked ? "#a3a59e" : "#3E8FC7"} strokeWidth={px * 1.5} pointerEvents="none" />
                 {single && !o.locked && (
                   <>
-                    <line x1={0} y1={-hh} x2={0} y2={-hh - 22 * px} stroke="#3E8FC7" strokeWidth={px * 1.5} pointerEvents="none" />
+                    <line x1={0} y1={-hh} x2={0} y2={-hh - rOff} stroke="#3E8FC7" strokeWidth={px * 1.5} pointerEvents="none" />
                     <circle
                       cx={0}
-                      cy={-hh - 22 * px}
-                      r={5 * px}
+                      cy={-hh - rOff}
+                      r={(coarse ? 11 : 5) * px}
                       fill="#fff"
                       stroke="#3E8FC7"
                       strokeWidth={px * 1.5}
@@ -451,7 +517,7 @@ export function Canvas2D() {
           })}
         </g>
       </svg>
-      <div className="pointer-events-none absolute bottom-3 left-3 flex items-center gap-3 rounded-md bg-surface/85 px-2.5 py-1.5 text-[11px] text-ink-2 backdrop-blur">
+      <div className="pointer-events-none absolute bottom-3 left-3 flex items-center gap-3 rounded-md max-sm:hidden bg-surface/85 px-2.5 py-1.5 text-[11px] text-ink-2 backdrop-blur">
         <span className="flex items-center gap-1.5">
           <svg width="16" height="4" aria-hidden>
             <line x1="0" y1="2" x2="16" y2="2" stroke="#20211F" strokeOpacity="0.55" />

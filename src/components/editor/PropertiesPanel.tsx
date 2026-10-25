@@ -44,12 +44,12 @@ export function useBrandSwatches() {
   return [kit.primary, kit.secondary, kit.accent, "#FFFFFF", "#20211F"];
 }
 
-export function PropertiesPanel() {
+export function PropertiesPanel({ embedded = false }: { embedded?: boolean }) {
   const project = useEditor((s) => s.project!);
   const selection = useEditor((s) => s.selection);
   const selected = project.objects.filter((o) => selection.includes(o.id));
   return (
-    <aside className="no-scrollbar h-full w-[272px] shrink-0 overflow-y-auto border-l border-line bg-surface" aria-label="Properties">
+    <aside className={embedded ? "" : "no-scrollbar h-full w-[272px] shrink-0 overflow-y-auto border-l border-line bg-surface"} aria-label="Properties">
       {selected.length === 1 ? (
         <ObjectProps o={selected[0]} />
       ) : selected.length > 1 ? (

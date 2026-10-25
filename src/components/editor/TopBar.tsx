@@ -27,7 +27,7 @@ import { LogoMark } from "../ui/Logo";
 export const isMac = () => typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
 export const mod = () => (isMac() ? "⌘" : "Ctrl+");
 
-export function TopBar({ onExport, onPreview, onSave, menu }: { onExport: () => void; onPreview: () => void; onSave: () => void; menu: { label: string; onClick: () => void }[] }) {
+export function TopBar({ mobile = false, onExport, onPreview, onSave, menu }: { mobile?: boolean; onExport: () => void; onPreview: () => void; onSave: () => void; menu: { label: string; onClick: () => void }[] }) {
   const project = useEditor((s) => s.project!);
   const status = useEditor((s) => s.saveStatus);
   const canUndo = useEditor((s) => s.past.length > 0);
@@ -62,12 +62,12 @@ export function TopBar({ onExport, onPreview, onSave, menu }: { onExport: () => 
   const show2d = view !== "3d";
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-2 border-b border-line bg-surface px-2">
-      <Link href="/dashboard" className="flex h-8 items-center gap-1.5 rounded-md px-2 text-ink-2 hover:bg-black/5 hover:text-ink" aria-label="Back to dashboard">
+    <header className="flex h-12 shrink-0 items-center gap-1 border-b border-line bg-surface px-1.5 sm:gap-2 sm:px-2">
+      <Link href="/dashboard" className="flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-ink-2 hover:bg-black/5 hover:text-ink" aria-label="Back to dashboard">
         <ArrowLeft size={15} />
-        <LogoMark size={18} />
+        <span className="hidden sm:inline-flex"><LogoMark size={18} /></span>
       </Link>
-      <div className="mx-1 h-5 w-px bg-line" />
+      <div className="mx-1 hidden h-5 w-px bg-line sm:block" />
       <input
         aria-label="Project name"
         value={name}
@@ -79,7 +79,7 @@ export function TopBar({ onExport, onPreview, onSave, menu }: { onExport: () => 
           else setName(project.name);
         }}
         onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
-        className="h-8 w-[min(260px,22vw)] truncate rounded-md border border-transparent bg-transparent px-2 text-[13.5px] font-medium hover:border-line focus:border-accent focus:outline-none"
+        className="h-8 min-w-0 flex-1 truncate sm:w-[min(260px,22vw)] sm:flex-none rounded-md border border-transparent bg-transparent px-2 text-[13.5px] font-medium hover:border-line focus:border-accent focus:outline-none"
       />
       {project.isSample && <span className="hidden rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent-hover lg:inline">Editable sample</span>}
       <button onClick={onSave} className={`hidden items-center gap-1.5 rounded-md px-1.5 py-1 text-[12px] hover:bg-black/5 md:flex ${statusUi.cls}`} title={`Save now (${m}S)`}>
@@ -87,7 +87,7 @@ export function TopBar({ onExport, onPreview, onSave, menu }: { onExport: () => 
         {statusUi.text}
       </button>
 
-      <div className="ml-auto flex items-center gap-0.5">
+      <div className="flex items-center gap-0.5 sm:ml-auto">
         <IconButton label="Undo" shortcut={`${m}Z`} disabled={!canUndo} onClick={undo}>
           <Undo2 size={16} />
         </IconButton>
@@ -95,14 +95,14 @@ export function TopBar({ onExport, onPreview, onSave, menu }: { onExport: () => 
           <Redo2 size={16} />
         </IconButton>
       </div>
-      <div className="mx-1 h-5 w-px bg-line" />
+      <div className="mx-1 hidden h-5 w-px bg-line sm:block" />
       <Segmented<ViewMode>
         label="View mode"
         value={view}
         onChange={setView}
         options={[
           { value: "2d", label: "2D", title: "Flat dieline (1)" },
-          { value: "split", label: "Split", title: "2D and 3D side by side (2)" },
+          ...(mobile ? [] : [{ value: "split" as ViewMode, label: "Split", title: "2D and 3D side by side (2)" }]),
           { value: "3d", label: "3D", title: "Folded package (3)" },
         ]}
       />
@@ -131,13 +131,22 @@ export function TopBar({ onExport, onPreview, onSave, menu }: { onExport: () => 
           </IconButton>
         </div>
       )}
-      <div className="mx-1 h-5 w-px bg-line" />
-      <Button size="sm" variant="ghost" onClick={onPreview} title="Full-screen 3D preview">
-        <Play size={13} /> Preview
-      </Button>
-      <Button size="sm" variant="primary" onClick={onExport}>
-        <Download size={13} /> Export
-      </Button>
+      {!mobile && (
+        <>
+          <div className="mx-1 h-5 w-px bg-line" />
+          <Button size="sm" variant="ghost" onClick={onPreview} title="Full-screen 3D preview">
+            <Play size={13} /> Preview
+          </Button>
+          <Button size="sm" variant="primary" onClick={onExport}>
+            <Download size={13} /> Export
+          </Button>
+        </>
+      )}
+      {mobile && (
+        <IconButton label="Export" onClick={onExport} className="!bg-accent !text-white">
+          <Download size={15} />
+        </IconButton>
+      )}
       <div className="relative" ref={menuRef}>
         <IconButton label="More" onClick={() => setMenuOpen((v) => !v)} aria-haspopup="menu" aria-expanded={menuOpen}>
           <MoreHorizontal size={16} />

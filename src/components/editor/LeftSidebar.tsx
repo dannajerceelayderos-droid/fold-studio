@@ -25,7 +25,7 @@ import { confirmDialog } from "../ui/Dialog";
 import { toast } from "../ui/Toast";
 import { TemplateThumb } from "../TemplateThumb";
 
-const TABS: { id: LeftTab; label: string; icon: typeof Layers }[] = [
+export const TABS: { id: LeftTab; label: string; icon: typeof Layers }[] = [
   { id: "layers", label: "Layers", icon: Layers },
   { id: "text", label: "Text", icon: Type },
   { id: "images", label: "Images", icon: ImageIcon },
@@ -62,14 +62,22 @@ export function LeftSidebar() {
         ))}
       </nav>
       <div className="no-scrollbar w-[244px] overflow-y-auto">
-        {tab === "layers" && <LayersTab />}
-        {tab === "text" && <TextTab />}
-        {tab === "images" && <ImagesTab />}
-        {tab === "shapes" && <ShapesTab />}
-        {tab === "brand" && <BrandTab />}
-        {tab === "templates" && <TemplatesTab />}
+        <TabContent tab={tab} />
       </div>
     </div>
+  );
+}
+
+export function TabContent({ tab }: { tab: LeftTab }) {
+  return (
+    <>
+      {tab === "layers" && <LayersTab />}
+      {tab === "text" && <TextTab />}
+      {tab === "images" && <ImagesTab />}
+      {tab === "shapes" && <ShapesTab />}
+      {tab === "brand" && <BrandTab />}
+      {tab === "templates" && <TemplatesTab />}
+    </>
   );
 }
 
