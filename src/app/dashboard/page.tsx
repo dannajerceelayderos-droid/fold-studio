@@ -1,5 +1,5 @@
 "use client";
-import { Copy, Download, FileUp, MoreHorizontal, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Copy, Download, GraduationCap, FileUp, MoreHorizontal, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/controls";
 import { ConfirmHost, confirmDialog } from "@/components/ui/Dialog";
 import { toast } from "@/components/ui/Toast";
 import { cloneProject } from "@/lib/project";
-import { buildExportFile, download, ensureSample, importProject, parseExportFile, safeName } from "@/lib/projectIO";
+import { buildExportFile, download, ensureSample, importProject, openPractice, parseExportFile, safeName } from "@/lib/projectIO";
 import { localRepo } from "@/lib/storage/db";
 import { TEMPLATE_LIST } from "@/lib/templates";
 import type { ProjectMeta } from "@/lib/types";
@@ -103,6 +103,24 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        <button
+          onClick={async () => {
+            try {
+              router.push(`/editor/${await openPractice()}`);
+            } catch {
+              toast.error("Browser storage is unavailable, so the practice box couldn't be opened. Allow site data and try again.");
+            }
+          }}
+          className="mt-6 flex w-full items-center gap-4 rounded-[var(--radius-lg)] border border-accent/40 bg-accent-soft/60 px-4 py-3.5 text-left hover:border-accent"
+        >
+          <GraduationCap size={22} className="shrink-0 text-accent" />
+          <span className="flex-1">
+            <span className="block text-[14px] font-semibold">Practice with a cookie box</span>
+            <span className="block text-[12.5px] leading-snug text-ink-2">A half-finished design with seven short tasks that tick off as you go. Takes about ten minutes.</span>
+          </span>
+          <span className="hidden shrink-0 text-[13px] font-medium text-accent-hover sm:inline">Start practice</span>
+        </button>
 
         {failed && (
           <div role="alert" className="mt-6 rounded-lg border border-[#e8c9c5] bg-[#fbf1ef] px-4 py-3 text-[13.5px] text-danger">

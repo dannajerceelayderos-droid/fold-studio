@@ -3,6 +3,7 @@ import { assetDataUrl, dataUrlToBlob, registerBlob } from "./assets";
 import { uid } from "./objects";
 import { cloneProject } from "./project";
 import { sampleProject } from "./sample";
+import { PRACTICE_ID, practiceProject } from "./practice";
 import { exportFileSchema, formatZodError, migrateProject, type ExportFile } from "./schema";
 import { localRepo, markSampleSeeded, sampleSeeded } from "./storage/db";
 import type { Project } from "./types";
@@ -67,8 +68,31 @@ export async function importProject(file: ExportFile): Promise<Project> {
   return p;
 }
 
+const PRACTICE_SEED = "fold-studio:practice-seeded";
+
+/** Put the practice box in the library once, for new and existing visitors. */
+async function ensurePractice(): Promise<void> {
+  try {
+    if (localStorage.getItem(PRACTICE_SEED) === "1") return;
+  } catch {
+    return;
+  }
+  if (!(await localRepo.get(PRACTICE_ID))) await localRepo.save(practiceProject(), null);
+  try {
+    localStorage.setItem(PRACTICE_SEED, "1");
+  } catch {
+    /* ignore */
+  }
+}
+
+export async function openPractice(): Promise<string> {
+  if (!(await localRepo.get(PRACTICE_ID))) await localRepo.save(practiceProject(), null);
+  return PRACTICE_ID;
+}
+
 /** Put the sample project in the library the first time someone visits. */
 export async function ensureSample(): Promise<void> {
+  await ensurePractice();
   if (sampleSeeded()) return;
   const existing = await localRepo.get(sampleProject().id);
   if (!existing) await localRepo.save(sampleProject(), null);

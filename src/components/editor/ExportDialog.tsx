@@ -12,6 +12,7 @@ import { Button, Segmented } from "../ui/controls";
 import { Dialog } from "../ui/Dialog";
 import { toast } from "../ui/Toast";
 import { editorScene } from "./sceneRef";
+import { addPracticeFlag } from "./PracticeCard";
 
 type Tab = "png" | "svg" | "json";
 
@@ -39,6 +40,7 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
       const url = await editorScene.current.capture({ scale: Number(scale), transparent, view: angle === "current" ? undefined : angle });
       download(`${name}-${angle}.png`, url);
       toast.success("PNG exported");
+      addPracticeFlag("exported");
     } catch (e) {
       toast.error(`The preview couldn't be exported: ${(e as Error).message}`);
     } finally {
@@ -63,6 +65,7 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
       download(`${name}-dieline.svg`, new Blob([svg], { type: "image/svg+xml" }));
       if (missing.length) toast.error(`Exported, but ${missing.length} image(s) couldn't be found and were left out.`);
       else toast.success("Dieline SVG exported");
+      addPracticeFlag("exported");
     } catch (e) {
       toast.error(`The SVG couldn't be exported: ${(e as Error).message}`);
     } finally {

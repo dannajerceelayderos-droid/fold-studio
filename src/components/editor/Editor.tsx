@@ -21,6 +21,8 @@ import { PropertiesPanel } from "./PropertiesPanel";
 import { editorScene } from "./sceneRef";
 import { TopBar } from "./TopBar";
 import { MobileToolbar } from "./MobileToolbar";
+import { PracticeCard, resetPracticeFlags } from "./PracticeCard";
+import { PRACTICE_ID, practiceProject } from "@/lib/practice";
 import { useIsMobile } from "./useIsMobile";
 import { Viewport3D } from "./Viewport3D";
 
@@ -72,8 +74,8 @@ export function Editor({ projectId }: { projectId: string }) {
     (async () => {
       try {
         let p = await localRepo.get(projectId);
-        if (!p && projectId === SAMPLE_ID) {
-          p = sampleProject();
+        if (!p && (projectId === SAMPLE_ID || projectId === PRACTICE_ID)) {
+          p = projectId === PRACTICE_ID ? practiceProject() : sampleProject();
           await localRepo.save(p, null);
         }
         if (!alive) return;
@@ -260,7 +262,22 @@ export function Editor({ projectId }: { projectId: string }) {
         download(`${safeName(project.name)}.foldstudio.json`, new Blob([JSON.stringify(f)], { type: "application/json" }));
       },
     },
-    ...(project.isSample
+    ...(project.id === PRACTICE_ID
+      ? [
+          {
+            label: "Start practice over",
+            onClick: async () => {
+              const ok = await confirmDialog({ title: "Start the practice over?", message: "The cookie box goes back to its starting design and the checklist clears.", confirm: "Start over", danger: true });
+              if (!ok) return;
+              const s = practiceProject();
+              await localRepo.save(s, null);
+              resetPracticeFlags();
+              useEditor.getState().load(s);
+              toast.success("Practice reset");
+            },
+          },
+        ]
+      : project.isSample
       ? [
           {
             label: "Reset sample to original",
@@ -284,7 +301,10 @@ export function Editor({ projectId }: { projectId: string }) {
       <TopBar mobile={mobile} onExport={() => setExportOpen(true)} onPreview={() => setPresenting(true)} onSave={() => save(true)} menu={menu} />
       {mobile ? (
         <>
-          <main className="relative min-h-0 flex-1">{view === "3d" ? <Viewport3D /> : <Canvas2D />}</main>
+          <main className="relative min-h-0 flex-1">
+            {view === "3d" ? <Viewport3D /> : <Canvas2D />}
+            <PracticeCard mobile />
+          </main>
           <MobileToolbar />
         </>
       ) : (
@@ -302,6 +322,7 @@ export function Editor({ projectId }: { projectId: string }) {
                 <Viewport3D />
               </div>
             )}
+            <PracticeCard mobile={false} />
           </main>
           <PropertiesPanel />
         </div>
